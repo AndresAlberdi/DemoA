@@ -14,6 +14,10 @@ from firebase_admin import credentials, firestore, storage
 
 from google import genai
 from google.genai import types
+import csv
+import io
+import zipfile
+from fastapi.responses import StreamingResponse
 
 # Cargar variables de entorno
 load_dotenv()
