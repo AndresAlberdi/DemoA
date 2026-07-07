@@ -1,6 +1,6 @@
 # Plan de Desarrollo: Sistema de Admisiones UCB (Demo A)
 
-Este documento detalla los pasos de implementación en Antigravity utilizando GCP/Firebase (Always Free) y n8n como motor de integración.
+Este documento detalla los pasos de implementación en Antigravity utilizando puramente GCP/Firebase (Always Free) y un backend en Python (FastAPI).
 
 ## 1. Configuración de Infraestructura (GCP / Firebase)
 
@@ -30,7 +30,7 @@ El identificador principal será el Carnet de Identidad (CI), lo que evita dupli
 1.  **Pantalla de Registro/Login:** Login con Google. Si es nuevo, redirigir a un formulario que exija el número de CI y teléfono.
 2.  **Validación de CI:** Antes de guardar, el backend de Antigravity debe consultar Firestore para asegurar que el CI no exista.
 3.  **Upload de Documentos:** Formulario para subir CI y Titulo de Bachiller a Firebase Storage. Validar que sea PDF solamente, alertar sobre tamaño y alertar que debe ser ESCANEADO, no FOTOGRAFÍA, el tamaño no debe ser mayor a 5 MB, no debe estar inclinado, preferentemente a 300 dpi en blanco y negro, para que la lectura sea mejor.
-    * *Trigger a n8n:* Una vez subidos los URLs, Antigravity hace un `POST` a un Webhook de n8n para que la IA los valide (escribir la función que se ejecuta cuando el estudiante sube su CI y Titulo de Bachiller, la cual debe hacer un POST con las URLs de los archivos apuntando directamente a la URL de producción de la n8n (https://n8n-707096513295.us-east1.run.app/webhook/...).
+    * *Validación IA:* Una vez subidos los archivos, el frontend llama a un endpoint del backend (FastAPI) que descarga el documento y utiliza la API de Gemini para validarlo directamente, actualizando Firestore con los resultados.
 4.  **Portal del Postulante:**
     * Pestaña "Preparación" (Contenido estático o traído desde Firestore).
     * Botones de acceso a exámenes (habilitados condicionalmente según el `estado` en Firestore).
@@ -46,18 +46,16 @@ El identificador principal será el Carnet de Identidad (CI), lo que evita dupli
 5. Diferentes parametrizaciones de los datos anteriores. Cambio de contraseña.
 6. Borrado de datos de un estudiante, para liberar espacio (con alerta de borrado).
 
-## 4. Orquestación e Integraciones (n8n)
+## 4. Orquestación e Integraciones (Backend FastAPI)
 
-Se deben crear 3 flujos (Workflows) principales en n8n iniciados por un nodo "Webhook":
+Toda la lógica de orquestación se manejará mediante endpoints en el backend de Python:
 
 1.  **Flujo IA - Revisión de Documentos:**
-    * *Trigger:* Webhook de Antigravity recibe URLs de los PDFs.
-    * *Proceso:* n8n descarga los archivos, los envía a la API de Gemini (con un prompt estricto de limpieza de datos y extracción de nombres/fechas), y compara los resultados con los datos ingresados.
-    * *Salida:* n8n actualiza el documento en Firestore y envía un email al admin de "Documentos listos para revisión".
+    * *Endpoint:* `/api/verify-docs`
+    * *Proceso:* El backend descarga los archivos desde Firebase Storage, los envía a la API de Gemini (con un prompt estricto de limpieza de datos), y compara los resultados. Actualiza Firestore.
 2.  **Flujo - Links de Examen (Meet):**
-    * *Trigger:* Cambio de estado en Firestore a "Habilitado_Conocimientos" o "Habilitado_Ingles".
-    * *Proceso:* Crea evento en Google Calendar con link de Meet asociado. Envía notificación por Gmail y Google Chat al estudiante.
+    * *Endpoint:* `/api/schedule-exam`
+    * *Proceso:* Para este demo, el backend simulará la creación del Meet, retornando un link de reunión estático y enviando la confirmación, desencadenado por el cambio de estado en Firestore.
 3.  **Flujo - Cita Final y Generación de Contrato:**
-    * *Trigger:* Cambio de estado a "Aprobado".
-    * *Proceso:* Crea la cita en Calendar presencial. n8n utiliza un nodo de HTML/Markdown a PDF para inyectar las notas y los datos del estudiante en una plantilla predefinida y lo sube a Firebase Storage.
-
+    * *Endpoint:* `/api/generate-contract`
+    * *Proceso:* El backend utilizará una librería nativa de Python para generar un PDF combinando los datos y notas, y lo subirá a Firebase Storage.

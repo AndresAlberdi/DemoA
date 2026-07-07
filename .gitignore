@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Entornos Virtuales Python y Configuración Sensible
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+.env
+config/firebase-adminsdk.json
