@@ -12,6 +12,21 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return children;
 };
 
+const AdminRoute = ({ children }: { children: React.ReactNode }) => {
+  const { currentUser } = useAuth();
+  if (!currentUser) return <Navigate to="/admin/login" />;
+  
+  // En este demo, los admins usan email/password, los estudiantes usan Google
+  const isAdmin = currentUser.providerData.some(provider => provider.providerId === 'password');
+  
+  if (!isAdmin) {
+    alert("Acceso denegado. Solo administradores pueden ver esta página.");
+    return <Navigate to="/portal" />;
+  }
+  
+  return children;
+};
+
 const App = () => {
   return (
     <AuthProvider>
@@ -20,7 +35,7 @@ const App = () => {
           <Route path="/" element={<Login />} />
           <Route path="/portal" element={<ProtectedRoute><Portal /></ProtectedRoute>} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </BrowserRouter>

@@ -14,9 +14,12 @@ const AdminLogin = () => {
   const [error, setError] = useState('');
 
   if (currentUser) {
-    // Si ya está logueado, redirigir
-    // Idealmente verificaríamos claims, pero para el demo redirigimos
-    setTimeout(() => navigate('/admin/dashboard'), 0);
+    const isAdmin = currentUser.providerData.some(p => p.providerId === 'password');
+    if (isAdmin) {
+      setTimeout(() => navigate('/admin/dashboard'), 0);
+    } else {
+      setTimeout(() => navigate('/portal'), 0);
+    }
   }
 
   const handleLogin = async (e: React.FormEvent) => {
